@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход - AnimeLibrary</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .auth-container { max-width: 400px; width: 100%; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.1); }
+        .auth-container h2 { text-align: center; margin-bottom: 20px; color: #1a1a2e; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; background: #2ecc71; color: white; transition: 0.3s; }
+        .btn:hover { background: #27ae60; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .auth-link { text-align: center; margin-top: 15px; }
+        .auth-link a { color: #3498db; text-decoration: none; }
+        .auth-link a:hover { text-decoration: underline; }
+        #message { margin-top: 10px; text-align: center; padding: 10px; border-radius: 6px; display: none; }
+        .error { background: #fee; color: #e74c3c; border: 1px solid #e74c3c; display: block !important; }
+        .success { background: #efe; color: #2ecc71; border: 1px solid #2ecc71; display: block !important; }
+        .info { background: #eef; color: #3498db; border: 1px solid #3498db; display: block !important; }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <h2>🔐 Вход</h2>
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="login">Логин</label>
+                <input type="text" id="login" required autocomplete="username" placeholder="Введите логин">
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль</label>
+                <input type="password" id="password" required autocomplete="current-password" placeholder="Введите пароль">
+            </div>
+            <button type="submit" class="btn" id="loginBtn">Войти</button>
+        </form>
+        <div class="auth-link">Нет аккаунта? <a href="/register.html">Зарегистрироваться</a></div>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+
+        // Проверка авторизации
+        (function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                fetch(API_BASE + '/me', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(res => {
+                    if (res.ok) {
+                        window.location.href = '/';
+                    } else {
+                        localStorage.removeItem('token');
+                    }
+                })
+                .catch(() => {
+                    localStorage.removeItem('token');
+                });
+            }
+        })();
+
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
+            e.preventDefault(); // ОБЯЗАТЕЛЬНО! Отключаем перезагрузку страницы
+            
+            const login = document.getElementById('login').value.trim();
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            const loginBtn = document.getElementById('loginBtn');
+            
+            // Скрываем сообщение
+            messageDiv.style.display = 'none';
+            messageDiv.textContent = '';
+            messageDiv.className = '';
+            
+            if (!login || !password) {
+                messageDiv.textContent = '⚠️ Заполните все поля';
+                messageDiv.className = 'error';
+                messageDiv.style.display = 'block';
+                return;
+            }
+            
+            // Блокируем кнопку
+            loginBtn.disabled = true;
+            loginBtn.textContent = '⏳ Вход...';
+
+            try {
+                console.log('Отправка запроса на сервер...');
+                console.log('Логин:', login);
+                
+                const resp = await fetch(API_BASE + '/login', {
+                    method: 'POST',
+                    headers: { 
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ login, password })
+                });
+
+                console.log('Ответ от сервера:', resp.status);
+                const data = await resp.json();
+                console.log('Данные ответа:', data);
+
+                if (resp.ok && data.token) {
+                    // Сохраняем токен
+                    localStorage.setItem('token', data.token);
+                    
+                    // Показываем успех
+                    messageDiv.textContent = '✅ Вход выполнен! Перенаправление...';
+                    messageDiv.className = 'success';
+                    messageDiv.style.display = 'block';
+                    
+                    // Перенаправляем через секунду
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 500);
+                } else {
+                    messageDiv.textContent = data.error || '❌ Неверный логин или пароль';
+                    messageDiv.className = 'error';
+                    messageDiv.style.display = 'block';
+                    document.getElementById('password').value = '';
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Войти';
+                }
+            } catch (e) {
+                console.error('Ошибка входа:', e);
+                messageDiv.textContent = '⚠️ Ошибка подключения к серверу. Проверьте, запущен ли сервер.';
+                messageDiv.className = 'error';
+                messageDiv.style.display = 'block';
+                loginBtn.disabled = false;
+                loginBtn.textContent = 'Войти';
+            }
+        });
+    </script>
+</body>
+</html>

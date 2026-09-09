@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AnimeLibrary - Детали аниме</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; color: #1a1a2e; }
+        .navbar { background: #1a1a2e; padding: 1rem 0; box-shadow: 0 2px 10px rgba(0,0,0,0.3); position: sticky; top: 0; z-index: 100; }
+        .nav-container { max-width: 1400px; margin: 0 auto; padding: 0 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .nav-brand { color: white; font-size: 1.5rem; font-weight: bold; text-decoration: none; }
+        .nav-brand:hover { color: #e94560; }
+        .nav-links { display: flex; gap: 15px; align-items: center; flex-wrap: wrap; }
+        .nav-links a { color: #aaa; text-decoration: none; transition: 0.3s; padding: 5px 10px; border-radius: 4px; }
+        .nav-links a:hover { color: white; background: rgba(255,255,255,0.1); }
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .back-btn { display: inline-block; margin-bottom: 20px; padding: 10px 20px; background: #3498db; color: white; text-decoration: none; border-radius: 6px; transition: 0.3s; }
+        .back-btn:hover { background: #2980b9; }
+        .anime-detail { background: white; border-radius: 12px; padding: 30px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .anime-header { display: flex; gap: 30px; margin-bottom: 30px; flex-wrap: wrap; }
+        .anime-poster { width: 300px; height: 400px; background: linear-gradient(135deg, #1a1a2e, #16213e); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 5rem; }
+        .anime-info { flex: 1; }
+        .anime-info h1 { font-size: 2.5rem; margin-bottom: 10px; }
+        .anime-info .meta { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 15px; }
+        .anime-info .meta span { background: #f0f2f5; padding: 5px 15px; border-radius: 20px; font-size: 0.9rem; }
+        .anime-info .description { font-size: 1.1rem; line-height: 1.8; color: #444; margin-bottom: 20px; }
+        .anime-info .genres { display: flex; gap: 8px; flex-wrap: wrap; }
+        .genre-tag { background: #e94560; color: white; padding: 4px 14px; border-radius: 20px; font-size: 0.85rem; }
+        .seasons-section { margin-top: 30px; }
+        .seasons-section h2 { margin-bottom: 20px; border-bottom: 2px solid #e94560; padding-bottom: 10px; }
+        .season { background: #f8f9fa; border-radius: 8px; padding: 15px; margin-bottom: 15px; }
+        .season h3 { margin-bottom: 10px; color: #1a1a2e; }
+        .episode { display: flex; justify-content: space-between; padding: 8px 12px; background: white; border-radius: 4px; margin-bottom: 5px; border-left: 3px solid #3498db; }
+        .episode:hover { background: #e8f0fe; }
+        .reviews-section { margin-top: 30px; }
+        .reviews-section h2 { margin-bottom: 20px; border-bottom: 2px solid #e94560; padding-bottom: 10px; }
+        .review { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-bottom: 10px; }
+        .review .user { font-weight: bold; color: #1a1a2e; }
+        .review .date { color: #999; font-size: 0.85rem; }
+        .review .text { margin-top: 5px; color: #444; }
+        .loading { text-align: center; padding: 50px; color: #999; font-size: 1.1rem; }
+        .error { color: #e74c3c; text-align: center; padding: 20px; font-size: 1.1rem; }
+        .no-data { color: #999; text-align: center; padding: 20px; }
+        @media (max-width: 768px) {
+            .anime-header { flex-direction: column; align-items: center; }
+            .anime-poster { width: 100%; max-width: 300px; height: 300px; }
+            .anime-info h1 { font-size: 1.8rem; }
+            .episode { flex-direction: column; gap: 5px; }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <a href="/" class="nav-brand">🎬 AnimeLibrary</a>
+            <div class="nav-links">
+                <a href="/">Каталог</a>
+                <a href="/admin.html">Админ-панель</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="/" class="back-btn">← Назад к каталогу</a>
+        <div class="anime-detail" id="animeDetail">
+            <div class="loading">⏳ Загрузка...</div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+
+        function getQueryParam(param) {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.get(param);
+        }
+
+        async function loadAnimeDetail() {
+            const id = getQueryParam('id');
+            if (!id) {
+                document.getElementById('animeDetail').innerHTML = '<p class="error">❌ ID аниме не указан</p>';
+                return;
+            }
+
+            try {
+                const resp = await fetch(API_BASE + '/titles/' + id + '/detail');
+                if (!resp.ok) {
+                    if (resp.status === 404) {
+                        document.getElementById('animeDetail').innerHTML = '<p class="error">❌ Аниме не найдено</p>';
+                    } else {
+                        document.getElementById('animeDetail').innerHTML = '<p class="error">❌ Ошибка загрузки данных</p>';
+                    }
+                    return;
+                }
+                const data = await resp.json();
+                renderDetail(data);
+            } catch (e) {
+                console.error('Ошибка:', e);
+                document.getElementById('animeDetail').innerHTML = '<p class="error">❌ Ошибка подключения к серверу</p>';
+            }
+        }
+
+        function renderDetail(data) {
+            const container = document.getElementById('animeDetail');
+            
+            let seasonsHtml = '';
+            if (data.seasons && data.seasons.length > 0) {
+                seasonsHtml = '<div class="seasons-section"><h2>📅 Сезоны и эпизоды</h2>';
+                data.seasons.forEach(s => {
+                    seasonsHtml += `<div class="season"><h3>Сезон ${s.season_number}</h3>`;
+                    if (s.episodes && s.episodes.length > 0) {
+                        s.episodes.forEach(e => {
+                            seasonsHtml += `
+                                <div class="episode">
+                                    <span>📺 Серия ${e.episode_number}: ${e.name || 'Без названия'}</span>
+                                    <span>⏱️ ${e.duration || '—'} мин</span>
+                                </div>
+                            `;
+                        });
+                    } else {
+                        seasonsHtml += '<p class="no-data">Нет эпизодов</p>';
+                    }
+                    seasonsHtml += '</div>';
+                });
+                seasonsHtml += '</div>';
+            } else {
+                seasonsHtml = '<div class="seasons-section"><h2>📅 Сезоны и эпизоды</h2><p class="no-data">Нет информации о сезонах</p></div>';
+            }
+
+            let reviewsHtml = '';
+            if (data.reviews && data.reviews.length > 0) {
+                reviewsHtml = '<div class="reviews-section"><h2>💬 Отзывы</h2>';
+                data.reviews.forEach(r => {
+                    reviewsHtml += `
+                        <div class="review">
+                            <div class="user">👤 ${r.user_login}</div>
+                            <div class="date">${new Date(r.review_date).toLocaleDateString('ru-RU')}</div>
+                            <div class="text">${r.review_text}</div>
+                        </div>
+                    `;
+                });
+                reviewsHtml += '</div>';
+            } else {
+                reviewsHtml = '<div class="reviews-section"><h2>💬 Отзывы</h2><p class="no-data">Пока нет отзывов</p></div>';
+            }
+
+            const genresHtml = data.genres ? data.genres.split(',').map(g => `<span class="genre-tag">${g}</span>`).join('') : '';
+
+            container.innerHTML = `
+                <div class="anime-header">
+                    <div class="anime-poster">🎬</div>
+                    <div class="anime-info">
+                        <h1>${data.name}</h1>
+                        <div class="meta">
+                            <span>📅 ${data.release_year || '—'}</span>
+                            <span>⭐ ${data.rating ? data.rating.toFixed(1) : '—'}</span>
+                            <span>📝 ${data.reviews_count || 0} отзывов</span>
+                            <span>📊 ${data.average_rating ? 'Средний: ' + data.average_rating.toFixed(1) : 'Нет оценок'}</span>
+                        </div>
+                        <div class="genres">${genresHtml}</div>
+                        <p class="description">${data.description || 'Описание отсутствует'}</p>
+                    </div>
+                </div>
+                ${seasonsHtml}
+                ${reviewsHtml}
+            `;
+        }
+
+        document.addEventListener('DOMContentLoaded', loadAnimeDetail);
+    </script>
+</body>
+</html>

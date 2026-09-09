@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Регистрация - AnimeLibrary</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .auth-container { max-width: 400px; width: 100%; padding: 30px; background: white; border-radius: 12px; box-shadow: 0 2px 20px rgba(0,0,0,0.1); }
+        .auth-container h2 { text-align: center; margin-bottom: 20px; color: #1a1a2e; }
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: 600; }
+        .form-group input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 6px; font-size: 1rem; }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; font-size: 1.1rem; cursor: pointer; background: #2ecc71; color: white; transition: 0.3s; }
+        .btn:hover { background: #27ae60; }
+        .btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .auth-link { text-align: center; margin-top: 15px; }
+        .auth-link a { color: #3498db; text-decoration: none; }
+        .auth-link a:hover { text-decoration: underline; }
+        #message { margin-top: 10px; text-align: center; padding: 10px; border-radius: 6px; display: none; }
+        .error { background: #fee; color: #e74c3c; border: 1px solid #e74c3c; display: block !important; }
+        .success { background: #efe; color: #2ecc71; border: 1px solid #2ecc71; display: block !important; }
+    </style>
+</head>
+<body>
+    <div class="auth-container">
+        <h2>📝 Регистрация</h2>
+        <form id="registerForm">
+            <div class="form-group">
+                <label for="login">Логин</label>
+                <input type="text" id="login" required autocomplete="username" placeholder="Придумайте логин">
+            </div>
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" required autocomplete="email" placeholder="Ваш email">
+            </div>
+            <div class="form-group">
+                <label for="password">Пароль (мин. 6 символов)</label>
+                <input type="password" id="password" required minlength="6" autocomplete="new-password" placeholder="Минимум 6 символов">
+            </div>
+            <button type="submit" class="btn" id="registerBtn">Зарегистрироваться</button>
+        </form>
+        <div class="auth-link">Уже есть аккаунт? <a href="/login.html">Войти</a></div>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3000/api';
+
+        // Проверка авторизации
+        (function checkAuth() {
+            const token = localStorage.getItem('token');
+            if (token) {
+                fetch(API_BASE + '/me', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                })
+                .then(res => {
+                    if (res.ok) {
+                        window.location.href = '/';
+                    } else {
+                        localStorage.removeItem('token');
+                    }
+                })
+                .catch(() => {
+                    localStorage.removeItem('token');
+                });
+            }
+        })();
+
+        document.getElementById('registerForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const login = document.getElementById('login').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            const messageDiv = document.getElementById('message');
+            const registerBtn = document.getElementById('registerBtn');
+            
+            messageDiv.style.display = 'none';
+            messageDiv.textContent = '';
+            messageDiv.className = '';
+            
+            if (!login || !email || !password) {
+                messageDiv.textContent = '⚠️ Заполните все поля';
+                messageDiv.className = 'error';
+                messageDiv.style.display = 'block';
+                return;
+            }
+            
+            if (password.length < 6) {
+                messageDiv.textContent = '⚠️ Пароль должен быть не менее 6 символов';
+                messageDiv.className = 'error';
+                messageDiv.style.display = 'block';
+                return;
+            }
+            
+            registerBtn.disabled = true;
+            registerBtn.textContent = '⏳ Регистрация...';
+
+            try {
+                console.log('Отправка запроса на регистрацию...');
+                console.log('Логин:', login, 'Email:', email);
+                
+                const resp = await fetch(API_BASE + '/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ login, email, password })
+                });
+
+                console.log('Ответ сервера:', resp.status);
+                const data = await resp.json();
+                console.log('Данные ответа:', data);
+
+                if (resp.ok) {
+                    messageDiv.textContent = '✅ Регистрация успешна! Перенаправление на вход...';
+                    messageDiv.className = 'success';
+                    messageDiv.style.display = 'block';
+                    
+                    setTimeout(() => {
+                        window.location.href = '/login.html';
+                    }, 1500);
+                } else {
+                    messageDiv.textContent = '❌ ' + (data.error || 'Ошибка регистрации');
+                    messageDiv.className = 'error';
+                    messageDiv.style.display = 'block';
+                    registerBtn.disabled = false;
+                    registerBtn.textContent = 'Зарегистрироваться';
+                }
+            } catch (e) {
+                console.error('Ошибка регистрации:', e);
+                messageDiv.textContent = '⚠️ Ошибка подключения к серверу. Проверьте, запущен ли сервер.';
+                messageDiv.className = 'error';
+                messageDiv.style.display = 'block';
+                registerBtn.disabled = false;
+                registerBtn.textContent = 'Зарегистрироваться';
+            }
+        });
+    </script>
+</body>
+</html>
