@@ -229,6 +229,29 @@ app.get('/api/titles', (req, res) => {
     });
 });
 
+// GET тайтл по ID
+app.get('/api/titles/:id', (req, res) => {
+    const { id } = req.params;
+    db.get(`
+        SELECT 
+            t.*,
+            GROUP_CONCAT(g.name) as genres
+        FROM Title t
+        LEFT JOIN Title_Genre tg ON t.title_id = tg.title_id
+        LEFT JOIN Genre g ON tg.genre_id = g.genre_id
+        WHERE t.title_id = ?
+        GROUP BY t.title_id
+    `, [id], (err, row) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+        } else if (!row) {
+            res.status(404).json({ error: 'Тайтл не найден' });
+        } else {
+            res.json(row);
+        }
+    });
+});
+
 // GET тайтл по ID с подробной информацией
 app.get('/api/titles/:id/detail', (req, res) => {
     const { id } = req.params;
